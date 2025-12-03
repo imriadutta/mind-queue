@@ -81,7 +81,9 @@ def main(page: ft.Page):
         for system_name in data.keys():
             systems_list.append(
                 ft.Container(
-                    ft.Row([ft.Text(system_name, size=18, weight=ft.FontWeight.W_600)]),
+                    ft.Row(
+                        [ft.Text(system_name, size=18, weight=ft.FontWeight.W_600)],
+                    ),
                     padding=10,
                     margin=ft.margin.only(bottom=8),
                     border_radius=8,
@@ -91,7 +93,6 @@ def main(page: ft.Page):
                 )
             )
 
-        # Add system dialog
         def open_add_system_dialog(e):
             name_field = ft.TextField(label="System name")
 
@@ -141,7 +142,6 @@ def main(page: ft.Page):
         current_system = system_name
         system_data: dict[str, list[list]] = data.get(system_name, {})
 
-        # Edit system name
         def edit_system_name():
             name_field = ft.TextField(label="System name", value=system_name)
 
@@ -184,7 +184,7 @@ def main(page: ft.Page):
         page.clean()
         content_controls: list[ft.Control] = []
 
-        # ---------- Task Helpers ----------
+        # ---------- Task helpers ----------
 
         def toggle_task(section: str, index: int, value: bool):
             system_data[section][index][2] = value
@@ -223,6 +223,39 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
+        def open_task_actions(section: str, index: int):
+            """Long-press menu: Edit / Delete."""
+
+            def do_edit(ev):
+                dlg.open = False
+                page.update()
+                edit_task(section, index)
+
+            def do_delete(ev):
+                dlg.open = False
+                page.update()
+                delete_task(section, index)
+
+            def do_cancel(ev):
+                dlg.open = False
+                page.update()
+
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Task actions"),
+                actions=[
+                    ft.TextButton("Edit", on_click=do_edit),
+                    ft.TextButton(
+                        "Delete", icon=ft.Icons.DELETE_OUTLINE, on_click=do_delete
+                    ),
+                    ft.TextButton("Cancel", on_click=do_cancel),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.overlay.append(dlg)
+            dlg.open = True
+            page.update()
+
         def add_task(section: str):
             title_field = ft.TextField(label="Title")
             label_field = ft.TextField(label="Task")
@@ -248,7 +281,7 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        # ---------- Section Helpers ----------
+        # ---------- Section helpers ----------
 
         def delete_section(section: str):
             system_data.pop(section, None)
@@ -303,12 +336,12 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        # ---------- Draw Sections + Tasks ----------
+        # ---------- Draw sections + tasks ----------
 
         for section_name, tasks in system_data.items():
             content_controls.append(ft.Container(height=10))
 
-            # Header + delete/edit
+            # header row
             content_controls.append(
                 ft.Row(
                     [
@@ -335,62 +368,54 @@ def main(page: ft.Page):
                 )
             )
 
+            # tasks
             for idx, (title_str, label, done) in enumerate(tasks):
                 color = ft.Colors.WHITE70 if done else ft.Colors.WHITE
                 deco = (
                     ft.TextDecoration.LINE_THROUGH if done else ft.TextDecoration.NONE
                 )
 
-                content_controls.append(
-                    ft.Row(
-                        [
-                            ft.Checkbox(
-                                value=done,
-                                width=24,
-                                height=24,
-                                on_change=lambda e, s=section_name, i=idx: toggle_task(
-                                    s, i, e.control.value
-                                ),
+                row = ft.Row(
+                    [
+                        ft.Checkbox(
+                            value=done,
+                            width=24,
+                            height=24,
+                            on_change=lambda e, s=section_name, i=idx: toggle_task(
+                                s, i, e.control.value
                             ),
-                            ft.Text(
-                                title_str,
-                                size=16,
-                                weight=ft.FontWeight.BOLD,
-                                color=color,
-                                style=ft.TextStyle(decoration=deco),
-                            ),
-                            ft.Container(width=8),
-                            ft.Text(
-                                label,
-                                size=16,
-                                color=color,
-                                style=ft.TextStyle(decoration=deco),
-                            ),
-                            ft.Container(expand=True),
-                            ft.IconButton(
-                                icon=ft.Icons.EDIT_OUTLINED,
-                                tooltip="Edit",
-                                icon_size=18,
-                                on_click=lambda e, s=section_name, i=idx: edit_task(
-                                    s, i
-                                ),
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.DELETE_OUTLINE,
-                                icon_color="red",
-                                tooltip="Delete",
-                                icon_size=18,
-                                on_click=lambda e, s=section_name, i=idx: delete_task(
-                                    s, i
-                                ),
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.START,
-                        spacing=6,
-                    )
+                        ),
+                        ft.Text(
+                            title_str,
+                            size=16,
+                            weight=ft.FontWeight.BOLD,
+                            color=color,
+                            style=ft.TextStyle(decoration=deco),
+                        ),
+                        ft.Container(width=8),
+                        ft.Text(
+                            label,
+                            size=16,
+                            color=color,
+                            style=ft.TextStyle(decoration=deco),
+                        ),
+                        ft.Container(expand=True),
+                    ],
+                    alignment=ft.MainAxisAlignment.START,
+                    spacing=6,
                 )
 
-            # Add Task Button under section
+                # Wrap row with long-press handler
+                gesture = ft.GestureDetector(
+                    content=row,
+                    on_long_press_start=lambda e,
+                    s=section_name,
+                    i=idx: open_task_actions(s, i),
+                    mouse_cursor=ft.MouseCursor.CLICK,
+                )
+                content_controls.append(gesture)
+
+            # add task button under this header
             content_controls.append(
                 ft.FilledButton(
                     "Add task",
@@ -399,7 +424,8 @@ def main(page: ft.Page):
                 )
             )
 
-        # ---------- Add header + delete system bottom row ----------
+        # bottom: add header + delete system
+        content_controls.append(ft.Container(height=16))
 
         def confirm_delete_system():
             txt = ft.Text(
@@ -430,8 +456,6 @@ def main(page: ft.Page):
             page.overlay.append(dlg)
             dlg.open = True
             page.update()
-
-        content_controls.append(ft.Container(height=16))
 
         content_controls.append(
             ft.Row(
