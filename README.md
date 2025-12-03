@@ -44,35 +44,21 @@ It helps you organize your life into **Systems → Headers → Tasks**, with a f
 
 ## **Screenshots**
 
-#### 1. Dashboard - System List
-![Dashboard](screenshots/001-dashboard-system-list.png)
+| Dashboard – System List | Add New System | Open System View |
+|------------------------|----------------|------------------|
+| <img src="screenshots/001-dashboard-system-list.png" width="200"/> | <img src="screenshots/002-add-system.png" width="200"/> | <img src="screenshots/003-open-system.png" width="200"/> |
 
-#### 2. Add System
-![Add System](screenshots/002-add-system.png)
+| System Sections | Rename System | Add New Header |
+|-----------------|---------------|----------------|
+| <img src="screenshots/004-open-system.png" width="200"/> | <img src="screenshots/005-rename-system.png" width="200"/> | <img src="screenshots/006-add-header.png" width="200"/> |
 
-#### 3. Open System
-![Open System](screenshots/003-open-system.png)
+| Rename Header | Add Task | Edit / Delete / Done |
+|---------------|----------|----------------------|
+| <img src="screenshots/007-rename-header.png" width="200"/> | <img src="screenshots/008-add-task.png" width="200"/> | <img src="screenshots/009-task-actions.png" width="200"/> |
 
-#### 4. Open System
-![Open System](screenshots/004-open-system.png)
-
-#### 5. Rename System
-![Rename System](screenshots/005-rename-system.png)
-
-#### 6. Add Header
-![Add Header](screenshots/006-add-header.png)
-
-#### 7. Rename Header
-![Rename Header](screenshots/007-rename-header.png)
-
-#### 8. Add Task
-![Add Task](screenshots/008-add-task.png)
-
-#### 9. Rename Task
-![Rename Task](screenshots/009-rename-task.png)
-
-#### 10. Delete System
-![Delete System](screenshots/010-delete-system.png)
+| Rename Task | Delete System Confirmation |
+|-------------|---------------------------|
+| <img src="screenshots/010-rename-task.png" width="200"/> | <img src="screenshots/011-delete-system.png" width="200"/> |
 
 ---
 
@@ -150,5 +136,3 @@ Make sure a `data.json` file exists. If not, create a demo one:
 ## **License**
 
 Free to use, customize, and improve.
-
----
