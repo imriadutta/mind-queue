@@ -76,23 +76,6 @@ All data is stored locally in `data.json`:
 }
 ```
 
----
-
-## **Run the App**
-
-### **Install dependencies**
-
-```bash
-pip install uv
-uv sync
-```
-
-### **Run**
-
-```bash
-uv run python main.py
-```
-
 Make sure a `data.json` file exists. If not, create a demo one:
 
 ```json
@@ -119,6 +102,32 @@ Make sure a `data.json` file exists. If not, create a demo one:
         ]
     }
 }
+```
+
+---
+
+## **Run the App**
+
+### **Install dependencies**
+
+```bash
+pip install uv
+uv sync
+```
+
+### **Run**
+
+```bash
+uv run python main.py
+```
+
+### **Run on Mobile**
+
+1. [Install Flet App for Mobile](https://docs.flet.dev/getting-started/testing-on-mobile/)
+2. Then, run
+```
+uv run flet run --android
+uv run flet run --ios
 ```
 
 ---
