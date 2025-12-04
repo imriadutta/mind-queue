@@ -63,6 +63,7 @@ def main(page: ft.Page):
 
     def show_dashboard(e=None):
         nonlocal current_system
+        page.overlay.clear()
         current_system = None
 
         page.appbar = None
@@ -97,14 +98,31 @@ def main(page: ft.Page):
             name_field = ft.TextField(label="System name")
 
             def on_add(ev):
-                name = name_field.value.strip()
-                if not name:
-                    return
-                if name not in data:
+                try:
+                    name = name_field.value.strip()
+
+                    # simple validation instead of silently doing nothing
+                    if not name:
+                        name_field.error_text = "Name is required"
+                        page.update()
+                        return
+
+                    if name in data:
+                        name_field.error_text = "System already exists"
+                        page.update()
+                        return
+
+                    # create system and persist
                     data[name] = {}
                     save_data(data)
-                close_current_dialog()
-                show_dashboard()
+
+                    # close dialog and redraw dashboard
+                    close_current_dialog()
+                    show_dashboard()
+
+                except Exception as ex:
+                    # if *anything* goes wrong, don't freeze – log it
+                    print("add_system error:", ex)
 
             dlg = ft.AlertDialog(
                 modal=True,
@@ -139,6 +157,7 @@ def main(page: ft.Page):
 
     def show_system(system_name: str):
         nonlocal current_system
+        page.overlay.clear()
         current_system = system_name
         system_data: dict[str, list[list]] = data.get(system_name, {})
 
@@ -186,31 +205,66 @@ def main(page: ft.Page):
 
         # ---------- Task helpers ----------
 
-        def toggle_task(section: str, index: int, value: bool):
-            system_data[section][index][2] = value
-            save_data(data)
-            show_system(system_name)
+        def toggle_task(header: str, index: int, value: bool):
+            if header not in system_data:
+                return
+            if index < 0 or index >= len(system_data[header]):
+                return
+            try:
+                system_data[header][index][2] = value
+                save_data(data)
+                close_current_dialog()
+                show_system(system_name)
+            except Exception as ex:
+                print("toggle_task error:", ex)
 
-        def delete_task(section: str, index: int):
-            system_data[section].pop(index)
-            save_data(data)
-            show_system(system_name)
+        def delete_task(header: str, index: int):
+            if header not in system_data:
+                return
+            if index < 0 or index >= len(system_data[header]):
+                return
+            try:
+                system_data[header].pop(index)
+                save_data(data)
+                close_current_dialog()
+                show_system(system_name)
+            except Exception as ex:
+                print("delete_task error:", ex)
 
-        def edit_task(section: str, index: int):
-            title_val, label_val, done_val = system_data[section][index]
+        def edit_task(header: str, index: int):
+            if header not in system_data:
+                return
+            if index < 0 or index >= len(system_data[header]):
+                return
+
+            try:
+                title_val, label_val, done_val = system_data[header][index]
+            except Exception as ex:
+                print("edit_task load error:", ex)
+                return
+
             title_field = ft.TextField(label="Title", value=title_val)
             label_field = ft.TextField(label="Task", value=label_val)
 
             def on_save(ev):
-                t = title_field.value.strip()
-                l = label_field.value.strip()
-                if not t or not l:
+                tl = title_field.value.strip()
+                lb = label_field.value.strip()
+                if not tl or not lb:
                     return
-                system_data[section][index][0] = t
-                system_data[section][index][1] = l
-                save_data(data)
-                close_current_dialog()
-                show_system(system_name)
+
+                if header not in system_data:
+                    return
+                if index < 0 or index >= len(system_data[header]):
+                    return
+
+                try:
+                    system_data[header][index][0] = tl
+                    system_data[header][index][1] = lb
+                    save_data(data)
+                    close_current_dialog()
+                    show_system(system_name)
+                except Exception as ex:
+                    print("edit_task save error:", ex)
 
             dlg = ft.AlertDialog(
                 modal=True,
@@ -223,56 +277,92 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        def open_task_actions(section: str, index: int):
-            """Long-press menu: Edit / Delete."""
+        def move_task(header: str, index: int, direction: int):
+            """Move a task up or down within its header (no UI calls here)."""
+            if header not in system_data:
+                return
+            tasks = system_data[header]
+            new_index = index + direction
+            if new_index < 0 or new_index >= len(tasks):
+                return
+            try:
+                tasks[index], tasks[new_index] = tasks[new_index], tasks[index]
+                save_data(data)
+            except Exception as ex:
+                print("move_task error:", ex)
+
+        def open_task_actions(header: str, index: int):
+            """Long-press menu: Move up / Move down / Edit / Delete."""
+            total = len(system_data.get(header, []))
+            is_first = index == 0
+            is_last = index == total - 1
+
+            def do_move_up(ev):
+                close_current_dialog()
+                move_task(header, index, -1)
+                show_system(system_name)
+
+            def do_move_down(ev):
+                close_current_dialog()
+                move_task(header, index, +1)
+                show_system(system_name)
 
             def do_edit(ev):
-                dlg.open = False
-                page.update()
-                edit_task(section, index)
+                close_current_dialog()
+                edit_task(header, index)
 
             def do_delete(ev):
-                dlg.open = False
-                page.update()
-                delete_task(section, index)
+                close_current_dialog()
+                delete_task(header, index)
 
             def do_cancel(ev):
-                dlg.open = False
-                page.update()
+                close_current_dialog()
 
             dlg = ft.AlertDialog(
                 modal=True,
                 title=ft.Text("Task actions"),
                 actions=[
+                    ft.TextButton(
+                        "Move up",
+                        icon=ft.Icons.ARROW_UPWARD,
+                        on_click=do_move_up,
+                        disabled=is_first,
+                    ),
+                    ft.TextButton(
+                        "Move down",
+                        icon=ft.Icons.ARROW_DOWNWARD,
+                        on_click=do_move_down,
+                        disabled=is_last,
+                    ),
                     ft.TextButton("Edit", on_click=do_edit),
                     ft.TextButton(
-                        "Delete", icon=ft.Icons.DELETE_OUTLINE, on_click=do_delete
+                        "Delete",
+                        icon=ft.Icons.DELETE_OUTLINE,
+                        on_click=do_delete,
                     ),
                     ft.TextButton("Cancel", on_click=do_cancel),
                 ],
                 actions_alignment=ft.MainAxisAlignment.END,
             )
-            page.overlay.append(dlg)
-            dlg.open = True
-            page.update()
+            open_dialog(dlg)
 
-        def add_task(section: str):
+        def add_task(header: str):
             title_field = ft.TextField(label="Title")
             label_field = ft.TextField(label="Task")
 
             def on_add(ev):
-                t = title_field.value.strip()
-                l = label_field.value.strip()
-                if not t or not l:
+                tl = title_field.value.strip()
+                lb = label_field.value.strip()
+                if not tl or not lb:
                     return
-                system_data.setdefault(section, []).append([t, l, False])
+                system_data.setdefault(header, []).append([tl, lb, False])
                 save_data(data)
                 close_current_dialog()
                 show_system(system_name)
 
             dlg = ft.AlertDialog(
                 modal=True,
-                title=ft.Text(f"Add task to {section}"),
+                title=ft.Text(f"Add task to {header}"),
                 content=ft.Column([title_field, label_field], tight=True),
                 actions=[
                     ft.TextButton("Cancel", on_click=close_current_dialog),
@@ -281,23 +371,23 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        # ---------- Section helpers ----------
+        # ---------- Header helpers ----------
 
-        def delete_section(section: str):
-            system_data.pop(section, None)
+        def delete_header(header: str):
+            system_data.pop(header, None)
             save_data(data)
             show_system(system_name)
 
-        def edit_section(section: str):
-            name_field = ft.TextField(label="Header name", value=section)
+        def edit_header(header: str):
+            name_field = ft.TextField(label="Header name", value=header)
 
             def on_save(ev):
                 new_name = name_field.value.strip()
-                if not new_name or new_name == section or new_name in system_data:
+                if not new_name or new_name == header or new_name in system_data:
                     close_current_dialog()
                     return
 
-                system_data[new_name] = system_data.pop(section)
+                system_data[new_name] = system_data.pop(header)
                 save_data(data)
                 close_current_dialog()
                 show_system(system_name)
@@ -313,7 +403,7 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        def add_section():
+        def add_header():
             name_field = ft.TextField(label="Header name")
 
             def on_add(ev):
@@ -336,30 +426,54 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        # ---------- Draw sections + tasks ----------
+        # ---------- Draw headers + tasks ----------
 
-        for section_name, tasks in system_data.items():
+        def confirm_delete_header():
+            txt = ft.Text(
+                f"Delete '{header_name}' permanently?\nThis cannot be undone."
+            )
+
+            def do_delete(ev):
+                close_current_dialog()
+                delete_header(header_name)
+
+            def do_cancel(ev):
+                close_current_dialog()
+
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Confirm delete"),
+                content=txt,
+                actions=[
+                    ft.TextButton("Cancel", on_click=do_cancel),
+                    ft.TextButton(
+                        "Delete", icon=ft.Icons.DELETE_FOREVER, on_click=do_delete
+                    ),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            open_dialog(dlg)
+
+        for header_name, tasks in system_data.items():
             content_controls.append(ft.Container(height=10))
 
             # header row
             content_controls.append(
                 ft.Row(
                     [
-                        ft.Text(section_name, size=20, weight=ft.FontWeight.BOLD),
+                        ft.Text(header_name, size=20, weight=ft.FontWeight.BOLD),
                         ft.Row(
                             [
                                 ft.IconButton(
                                     icon=ft.Icons.EDIT,
                                     tooltip="Rename",
-                                    on_click=lambda e, s=section_name: edit_section(s),
+                                    on_click=lambda e, s=header_name: edit_header(s),
                                 ),
                                 ft.IconButton(
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     icon_color="red",
                                     tooltip="Delete",
-                                    on_click=lambda e, s=section_name: delete_section(
-                                        s
-                                    ),
+                                    on_click=lambda e: confirm_delete_header(),
                                 ),
                             ]
                         ),
@@ -370,6 +484,8 @@ def main(page: ft.Page):
 
             # tasks
             for idx, (title_str, label, done) in enumerate(tasks):
+                current_index = idx  # capture for lambdas
+
                 color = ft.Colors.WHITE70 if done else ft.Colors.WHITE
                 deco = (
                     ft.TextDecoration.LINE_THROUGH if done else ft.TextDecoration.NONE
@@ -381,9 +497,9 @@ def main(page: ft.Page):
                             value=done,
                             width=24,
                             height=24,
-                            on_change=lambda e, s=section_name, i=idx: toggle_task(
-                                s, i, e.control.value
-                            ),
+                            on_change=lambda e,
+                            s=header_name,
+                            i=current_index: toggle_task(s, i, e.control.value),
                         ),
                         ft.Text(
                             title_str,
@@ -409,8 +525,8 @@ def main(page: ft.Page):
                 gesture = ft.GestureDetector(
                     content=row,
                     on_long_press_start=lambda e,
-                    s=section_name,
-                    i=idx: open_task_actions(s, i),
+                    s=header_name,
+                    i=current_index: open_task_actions(s, i),
                     mouse_cursor=ft.MouseCursor.CLICK,
                 )
                 content_controls.append(gesture)
@@ -420,7 +536,7 @@ def main(page: ft.Page):
                 ft.FilledButton(
                     "Add task",
                     icon=ft.Icons.ADD,
-                    on_click=lambda e, s=section_name: add_task(s),
+                    on_click=lambda e, s=header_name: add_task(s),
                 )
             )
 
@@ -433,13 +549,11 @@ def main(page: ft.Page):
             )
 
             def do_delete(ev):
-                dlg.open = False
-                page.update()
+                close_current_dialog()
                 delete_system(system_name)
 
             def do_cancel(ev):
-                dlg.open = False
-                page.update()
+                close_current_dialog()
 
             dlg = ft.AlertDialog(
                 modal=True,
@@ -453,20 +567,18 @@ def main(page: ft.Page):
                 ],
                 actions_alignment=ft.MainAxisAlignment.END,
             )
-            page.overlay.append(dlg)
-            dlg.open = True
-            page.update()
+            open_dialog(dlg)
 
         content_controls.append(
             ft.Row(
                 [
                     ft.FilledButton(
-                        "Add header",
+                        "Add Header",
                         icon=ft.Icons.ADD,
-                        on_click=lambda e: add_section(),
+                        on_click=lambda e: add_header(),
                     ),
                     ft.FilledButton(
-                        "Delete system",
+                        "Delete System",
                         icon=ft.Icons.DELETE_FOREVER,
                         bgcolor="red",
                         color="white",

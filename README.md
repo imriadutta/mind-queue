@@ -83,15 +83,14 @@ All data is stored locally in `data.json`:
 ### **Install dependencies**
 
 ```bash
-virtualenv venv
-source venv/bin/activate
-pip install -r requirements.txt
+pip install uv
+uv sync
 ```
 
 ### **Run**
 
 ```bash
-python main.py
+uv run python main.py
 ```
 
 Make sure a `data.json` file exists. If not, create a demo one:
