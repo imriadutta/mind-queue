@@ -428,7 +428,7 @@ def main(page: ft.Page):
 
         # ---------- Draw headers + tasks ----------
 
-        def confirm_delete_header():
+        def confirm_delete_header(header_name: str):
             txt = ft.Text(
                 f"Delete '{header_name}' permanently?\nThis cannot be undone."
             )
@@ -467,13 +467,13 @@ def main(page: ft.Page):
                                 ft.IconButton(
                                     icon=ft.Icons.EDIT,
                                     tooltip="Rename",
-                                    on_click=lambda e, s=header_name: edit_header(s),
+                                    on_click=lambda e, h=header_name: edit_header(h),
                                 ),
                                 ft.IconButton(
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     icon_color="red",
                                     tooltip="Delete",
-                                    on_click=lambda e: confirm_delete_header(),
+                                    on_click=lambda e, h=header_name: confirm_delete_header(h),
                                 ),
                             ]
                         ),
