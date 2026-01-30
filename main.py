@@ -33,14 +33,11 @@ def main(page: ft.Page):
 
     # ---------- Dialog helpers ----------
 
-    def close_current_dialog(e=None):
-        changed = False
+    def close_current_dialog():
         for ctl in page.overlay:
-            if isinstance(ctl, ft.AlertDialog) and ctl.open:
+            if isinstance(ctl, ft.AlertDialog):
                 ctl.open = False
-                changed = True
-        if changed:
-            page.update()
+        page.update()
 
     def open_dialog(dialog: ft.AlertDialog):
         if dialog not in page.overlay:
@@ -63,7 +60,6 @@ def main(page: ft.Page):
 
     def show_dashboard(e=None):
         nonlocal current_system
-        page.overlay.clear()
         current_system = None
 
         page.appbar = None
@@ -157,7 +153,6 @@ def main(page: ft.Page):
 
     def show_system(system_name: str):
         nonlocal current_system
-        page.overlay.clear()
         current_system = system_name
         system_data: dict[str, list[list]] = data.get(system_name, {})
 
