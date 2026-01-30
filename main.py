@@ -26,7 +26,7 @@ def main(page: ft.Page):
     page.padding = ft.padding.symmetric(horizontal=24, vertical=24)
     page.horizontal_alignment = ft.CrossAxisAlignment.START
     page.vertical_alignment = ft.MainAxisAlignment.START
-    page.scroll = ft.ScrollMode.AUTO
+    page.scroll = ft.ScrollMode.HIDDEN
 
     data = load_data()
     current_system: str | None = None
