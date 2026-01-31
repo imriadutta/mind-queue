@@ -1,3 +1,5 @@
+import asyncio
+import copy
 import json
 from pathlib import Path
 
@@ -31,7 +33,48 @@ def main(page: ft.Page):
     data = load_data()
     current_system: str | None = None
 
+    def handle_window_event(e: ft.WindowEvent):
+        print(e.type, current_system)
+        # Android back button maps to CLOSE
+        if e.type == ft.WindowEventType.CLOSE:
+            if current_system is not None:
+                # We are inside a system → go back to dashboard
+                e.prevent_default()
+                show_dashboard()
+    page.on_window_event = handle_window_event
+
+    def handle_keyboard_event(e: ft.KeyboardEvent):
+        if e.key == "Escape" and current_system is not None:
+            show_dashboard()
+    page.on_keyboard_event = handle_keyboard_event
+
     # ---------- Dialog helpers ----------
+    def confirm_delete_system(system_name: str):
+        def do_delete(ev):
+            close_current_dialog()
+            delete_system(system_name)
+
+        def do_cancel(ev):
+            close_current_dialog()
+
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Confirm delete"),
+            content=ft.Text(
+                f"Delete '{system_name}' permanently?\n\nThis action cannot be undone."
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=do_cancel),
+                ft.TextButton(
+                    "Delete",
+                    icon=ft.Icons.DELETE_FOREVER,
+                    icon_color="red",
+                    on_click=do_delete,
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        open_dialog(dlg)
 
     def close_current_dialog():
         for ctl in page.overlay:
@@ -45,7 +88,22 @@ def main(page: ft.Page):
         dialog.open = True
         page.update()
 
-    # ---------- System delete ----------
+    # ---------- System ----------
+    def clone_system(system_name: str):
+        if system_name not in data:
+            return
+
+        base_name = f"Copy of {system_name}"
+        new_name = base_name
+        counter = 2
+
+        while new_name in data:
+            new_name = f"{base_name} ({counter})"
+            counter += 1
+
+        # deep copy to avoid shared references
+        data[new_name] = copy.deepcopy(data[system_name])
+        save_data(data)
 
     def delete_system(system_name: str):
         nonlocal current_system
@@ -75,9 +133,43 @@ def main(page: ft.Page):
         def open_system(system_name: str):
             show_system(system_name)
 
+        def open_system_actions(system_name: str):
+            def do_open(e):
+                close_current_dialog()
+                show_system(system_name)
+
+            async def do_clone(e):
+                close_current_dialog()
+                clone_system(system_name)
+                await asyncio.sleep(0)
+                show_dashboard()
+
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text(system_name),
+                actions=[
+                    # ft.TextButton("Open", on_click=do_open),
+                    ft.TextButton(
+                        "Clone",
+                        icon=ft.Icons.CONTENT_COPY,
+                        on_click=do_clone,
+                    ),
+                    ft.TextButton(
+                        "Delete",
+                        icon=ft.Icons.DELETE_OUTLINE,
+                        icon_color=ft.Colors.RED,
+                        disabled=len(data) == 1,
+                        on_click=lambda e: confirm_delete_system(system_name),
+                    ),
+                    ft.TextButton("Cancel", on_click=lambda e: close_current_dialog()),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            open_dialog(dlg)
+
         for system_name in data.keys():
-            systems_list.append(
-                ft.Container(
+            gesture = ft.GestureDetector(
+                content=ft.Container(
                     ft.Row(
                         [ft.Text(system_name, size=18, weight=ft.FontWeight.W_600)],
                     ),
@@ -85,10 +177,12 @@ def main(page: ft.Page):
                     margin=ft.margin.only(bottom=8),
                     border_radius=8,
                     bgcolor="#1c1c1c",
-                    ink=True,
-                    on_click=lambda e, n=system_name: open_system(n),
-                )
+                ),
+                on_tap=lambda e, n=system_name: open_system(n),
+                on_long_press_start=lambda e, n=system_name: open_system_actions(n),
+                mouse_cursor=ft.MouseCursor.CLICK,
             )
+            systems_list.append(gesture)
 
         def open_add_system_dialog(e):
             name_field = ft.TextField(label="System name")
@@ -200,6 +294,21 @@ def main(page: ft.Page):
 
         # ---------- Task helpers ----------
 
+        def clone_task(header: str, index: int):
+            if header not in system_data:
+                return
+            tasks = system_data[header]
+            if index < 0 or index >= len(tasks):
+                return
+
+            title, label, done = tasks[index]
+
+            # Clone task (reset done)
+            cloned = [f"{title} (copy)", label, False]
+
+            tasks.insert(index + 1, cloned)
+            save_data(data)
+
         def toggle_task(header: str, index: int, value: bool):
             if header not in system_data:
                 return
@@ -292,6 +401,11 @@ def main(page: ft.Page):
             is_first = index == 0
             is_last = index == total - 1
 
+            def do_clone(ev):
+                close_current_dialog()
+                clone_task(header, index)
+                show_system(system_name)
+
             def do_move_up(ev):
                 close_current_dialog()
                 move_task(header, index, -1)
@@ -330,6 +444,11 @@ def main(page: ft.Page):
                         disabled=is_last,
                     ),
                     ft.TextButton("Edit", on_click=do_edit),
+                    ft.TextButton(
+                        "Clone",
+                        icon=ft.Icons.CONTENT_COPY,
+                        on_click=do_clone,
+                    ),
                     ft.TextButton(
                         "Delete",
                         icon=ft.Icons.DELETE_OUTLINE,
@@ -516,12 +635,10 @@ def main(page: ft.Page):
                     spacing=6,
                 )
 
-                # Wrap row with long-press handler
                 gesture = ft.GestureDetector(
                     content=row,
-                    on_long_press_start=lambda e,
-                    s=header_name,
-                    i=current_index: open_task_actions(s, i),
+                    on_tap=lambda e, s=header_name, i=current_index: edit_task(s, i),
+                    on_long_press_start=lambda e, s=header_name, i=current_index: open_task_actions(s, i),
                     mouse_cursor=ft.MouseCursor.CLICK,
                 )
                 content_controls.append(gesture)
