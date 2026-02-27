@@ -2,3 +2,4 @@
 **/__pycache__/
 uv.lock
 build/
+storage/firebase-connection.json
