@@ -42,26 +42,6 @@ It helps you organize your life into **Systems → Headers → Tasks**, with a f
 
 ---
 
-## **Screenshots**
-
-| Dashboard – System List | Add New System | Open System View |
-|------------------------|----------------|------------------|
-| <img src="screenshots/001-dashboard-system-list.png" width="200"/> | <img src="screenshots/002-add-system.png" width="200"/> | <img src="screenshots/003-open-system.png" width="200"/> |
-
-| System Sections | Rename System | Add New Header |
-|-----------------|---------------|----------------|
-| <img src="screenshots/004-open-system.png" width="200"/> | <img src="screenshots/005-rename-system.png" width="200"/> | <img src="screenshots/006-add-header.png" width="200"/> |
-
-| Rename Header | Add Task | Edit / Delete / Done |
-|---------------|----------|----------------------|
-| <img src="screenshots/007-rename-header.png" width="200"/> | <img src="screenshots/008-add-task.png" width="200"/> | <img src="screenshots/009-task-actions.png" width="200"/> |
-
-| Rename Task | Delete System Confirmation |
-|-------------|---------------------------|
-| <img src="screenshots/010-rename-task.png" width="200"/> | <img src="screenshots/011-delete-system.png" width="200"/> |
-
----
-
 ## **Data Storage**
 
 All data is stored locally in `data.json`:
