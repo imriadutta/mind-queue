@@ -33,19 +33,10 @@ def main(page: ft.Page):
     data = load_data()
     current_system: str | None = None
 
-    def handle_window_event(e: ft.WindowEvent):
-        print(e.type, current_system)
-        # Android back button maps to CLOSE
-        if e.type == ft.WindowEventType.CLOSE:
-            if current_system is not None:
-                # We are inside a system → go back to dashboard
-                e.prevent_default()
-                show_dashboard()
-    page.on_window_event = handle_window_event
-
     def handle_keyboard_event(e: ft.KeyboardEvent):
         if e.key == "Escape" and current_system is not None:
             show_dashboard()
+
     page.on_keyboard_event = handle_keyboard_event
 
     # ---------- Dialog helpers ----------
@@ -167,7 +158,7 @@ def main(page: ft.Page):
             )
             open_dialog(dlg)
 
-        for system_name in data.keys():
+        for system_name in data:
             gesture = ft.GestureDetector(
                 content=ft.Container(
                     ft.Row(
@@ -587,7 +578,9 @@ def main(page: ft.Page):
                                     icon=ft.Icons.DELETE_OUTLINE,
                                     icon_color="red",
                                     tooltip="Delete",
-                                    on_click=lambda e, h=header_name: confirm_delete_header(h),
+                                    on_click=lambda e, h=header_name: (
+                                        confirm_delete_header(h)
+                                    ),
                                 ),
                             ]
                         ),
@@ -611,9 +604,9 @@ def main(page: ft.Page):
                             value=done,
                             width=24,
                             height=24,
-                            on_change=lambda e,
-                            s=header_name,
-                            i=current_index: toggle_task(s, i, e.control.value),
+                            on_change=lambda e, s=header_name, i=current_index: (
+                                toggle_task(s, i, e.control.value)
+                            ),
                         ),
                         ft.Text(
                             title_str,
@@ -638,7 +631,9 @@ def main(page: ft.Page):
                 gesture = ft.GestureDetector(
                     content=row,
                     on_tap=lambda e, s=header_name, i=current_index: edit_task(s, i),
-                    on_long_press_start=lambda e, s=header_name, i=current_index: open_task_actions(s, i),
+                    on_long_press_start=lambda e, s=header_name, i=current_index: (
+                        open_task_actions(s, i)
+                    ),
                     mouse_cursor=ft.MouseCursor.CLICK,
                 )
                 content_controls.append(gesture)
@@ -709,4 +704,4 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)
